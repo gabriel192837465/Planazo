@@ -1,0 +1,112 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Planazo - Informe tecnico</title><style>
+@page{size:A4;margin:16mm 18mm 18mm}body{font-family:Georgia,serif;color:#202124;line-height:1.45;font-size:11pt}h1{font-family:Arial,sans-serif;color:#d94801;text-align:center;font-size:28pt;margin:0 0 20pt}h2{font-family:Arial,sans-serif;color:#9a3412;font-size:17pt;border-bottom:1px solid #f0b08a;padding-bottom:4pt;margin-top:22pt}h3{font-family:Arial,sans-serif;color:#c2410c;font-size:13pt;margin-top:16pt}p{margin:0 0 9pt}ul{margin-top:0;padding-left:22pt}li{margin-bottom:5pt}code{font-family:Consolas,monospace;background:#fff1eb;padding:1px 3px}strong{font-family:Arial,sans-serif}.meta{text-align:center;color:#666;font-family:Arial,sans-serif;font-size:10pt} .page-number{position:fixed;bottom:-12mm;right:0;color:#777;font:9pt Arial,sans-serif}</style></head><body>
+<h1>Planazo: informe tecnico del estado del proyecto</h1>
+<p class="meta"><strong>Fecha del analisis:</strong> 19 de agosto de 2026</p>
+<p class="meta"><strong>Proyecto:</strong> <code>planazo3</code></p>
+<p class="meta"><strong>Tecnologia principal:</strong> Flutter/Dart con dependencias de Firebase</p>
+<h2>1. Resumen ejecutivo</h2>
+<p>Planazo es un prototipo de aplicacion movil para encontrar y organizar actividades deportivas. La version actual permite recorrer una experiencia visual completa: acceder desde una pantalla de login, consultar tres juntadas de ejemplo, abrir su detalle, crear una nueva juntada durante la sesion y consultar un perfil. La navegacion funciona con rutas imperativas de Flutter y el estado vive en memoria dentro de <code>HomeScreen</code>.</p>
+<p>El proyecto esta en una <strong>etapa de prototipo funcional de interfaz</strong>, no en una beta lista para usuarios. Firebase aparece declarado en <code>pubspec.yaml</code>, existe configuracion de proyecto para Android y <code>firebase.json</code>, y se llama a <code>Firebase.initializeApp()</code>. Sin embargo, <code>lib/firebase_options.dart</code> esta vacio y no hay llamadas a Firebase Authentication ni Cloud Firestore. Por tanto, las credenciales, reuniones, perfil, participaciones y acciones de usuario todavia no son persistentes ni reales.</p>
+<h2>2. Alcance analizado</h2>
+<p>Se revisaron las fuentes Dart de <code>planazo3/lib</code>, el modelo duplicado en la raiz <code>models/meetup.dart</code>, <code>pubspec.yaml</code>, <code>analysis_options.yaml</code>, <code>README.md</code>, <code>firebase.json</code>, la configuracion Android de Firebase y la configuracion de lanzamiento de VS Code. Se excluyeron artefactos generados de <code>build/</code> y <code>.dart_tool/</code>.</p>
+<p>No se encontraron archivos <code>*_test.dart</code>. En el entorno de analisis no estaban disponibles los ejecutables <code>flutter</code> ni <code>git</code>, por lo que el informe no afirma que <code>flutter analyze</code>, <code>flutter test</code> o una compilacion hayan sido ejecutados con exito.</p>
+<h2>3. Arquitectura actual</h2>
+<p>La arquitectura es una estructura Flutter pequena y directa, sin capas de dominio, repositorios ni gestion de estado externa.</p>
+<ul>
+<li><strong>Entrada y tema:</strong> <code>lib/main.dart</code> inicializa Flutter, intenta inicializar Firebase y monta <code>MaterialApp</code> con tema Material 3 y color semilla naranja oscuro.</li>
+<li><strong>Autenticacion visual:</strong> <code>lib/screens/login_screen.dart</code> muestra email y contrasena, pero el boton navega directamente a Home sin validar campos ni autenticar.</li>
+<li><strong>Listado y estado:</strong> <code>lib/screens/home_screen.dart</code> mantiene una lista mutable de <code>Meetup</code> con tres datos de ejemplo. La lista se modifica localmente al volver de Create.</li>
+<li><strong>Presentacion reutilizable:</strong> <code>lib/widgets/meetup_card.dart</code> representa cada actividad y selecciona un icono segun el deporte.</li>
+<li><strong>Creacion:</strong> <code>lib/screens/create_screen.dart</code> recoge texto y numeros, construye un <code>Meetup</code> y lo devuelve a Home.</li>
+<li><strong>Detalle:</strong> <code>lib/screens/detail_screen.dart</code> muestra la actividad y el boton Unirme solo presenta un <code>SnackBar</code>.</li>
+<li><strong>Perfil:</strong> <code>lib/screens/profile_screen.dart</code> contiene datos y metricas fijas, y cerrar sesion solo vuelve a la pantalla anterior.</li>
+<li><strong>Modelo:</strong> <code>lib/models/meetup.dart</code> es una clase mutable con siete campos obligatorios. No tiene identificador, serializacion, propietario, fecha tipada ni metodos <code>fromMap</code>/<code>toMap</code>.</li>
+</ul>
+<p>Flujo principal:</p>
+<p><code>main.dart</code> -&gt; <code>LoginScreen</code> -&gt; <code>HomeScreen</code> -&gt; <code>MeetupCard</code> -&gt; <code>DetailScreen</code></p>
+<p><code>HomeScreen</code> -&gt; <code>CreateScreen</code> -&gt; nuevo <code>Meetup</code> en memoria</p>
+<p><code>HomeScreen</code> -&gt; <code>ProfileScreen</code></p>
+<h2>4. Funcionamiento por pantalla</h2>
+<h3>Inicio y login</h3>
+<p><code>main()</code> asegura la vinculacion con el motor Flutter, espera <code>Firebase.initializeApp()</code> y luego inicia <code>SportMeetApp</code>. La pantalla inicial siempre es <code>LoginScreen</code>.</p>
+<p>La pantalla contiene campos de email y contrasena, una identidad visual de Planazo y acciones Ingresar y Crear cuenta. Los controladores se crean dentro de <code>build</code>, no se liberan y sus valores no se utilizan. Ingresar ejecuta <code>pushReplacement</code> a Home independientemente de los datos introducidos. Crear cuenta no tiene comportamiento.</p>
+<h3>Home</h3>
+<p>Home muestra tres actividades precargadas: Basket en Parque Centenario, Futbol en Palermo y Running en Puerto Madero. Cada tarjeta informa deporte, lugar, fecha, hora y ocupacion. El boton de perfil abre Profile y el boton flotante abre Create.</p>
+<p>Cuando Create devuelve un <code>Meetup</code>, Home lo agrega a la lista y llama a <code>setState</code>. Esto prueba el flujo de alta dentro de la sesion, pero al cerrar la app se pierde y no existe edicion, borrado, busqueda, filtros, ordenamiento ni control de duplicados.</p>
+<h3>Creacion de juntadas</h3>
+<p>Create ofrece campos de deporte, lugar, fecha, hora, participantes actuales, maximo y descripcion. Los dos contadores empiezan con <code>1</code> y <code>10</code>. Al pulsar Crear juntada se intenta convertir los contadores con <code>int.tryParse</code>; ante entradas invalidas se usan silenciosamente 1 y 10. No hay campos obligatorios, validacion de rangos, selector de fecha/hora, prevencion de maximo menor que actuales ni <code>dispose</code> de controladores.</p>
+<h3>Detalle y union</h3>
+<p>Detail presenta icono, datos de ubicacion y agenda, ocupacion y descripcion. Unirse no cambia participantes ni guarda una relacion usuario-actividad; solamente muestra <code>Te uniste a la actividad!</code>. No existe estado de boton, cupo lleno, cancelar participacion ni confirmacion persistente.</p>
+<h3>Perfil</h3>
+<p>Profile muestra el nombre Maximiliano, una descripcion y metricas fijas: deportes favoritos, tres juntadas creadas, 18 participaciones y calificacion 4.9. No hay datos derivados del usuario autenticado ni edicion de perfil. Cerrar sesion hace <code>Navigator.pop</code>, por lo que no limpia sesion ni devuelve necesariamente al login si la pantalla se abrio desde otro contexto.</p>
+<h2>5. Datos e integraciones</h2>
+<h3>Modelo Meetup</h3>
+<p>El modelo representa una actividad, pero todos los valores temporales son <code>String</code> y no hay <code>id</code>. Esto impide ordenar de forma fiable, validar fechas, referenciar documentos de backend o identificar al creador. La clase tambien es mutable, de modo que cualquier pantalla puede modificar sus campos sin una regla clara.</p>
+<p>Existe una copia del modelo en <code>models/meetup.dart</code> fuera de <code>planazo3/lib</code>; la aplicacion importa la copia dentro de <code>lib/models</code>. La duplicacion puede provocar cambios divergentes y debe eliminarse o convertirse en una dependencia explicita.</p>
+<h3>Firebase</h3>
+<p>Las dependencias declaradas son <code>firebase_core</code>, <code>cloud_firestore</code> y <code>firebase_auth</code>. <code>firebase.json</code> y <code>android/app/google-services.json</code> apuntan al proyecto Firebase <code>planazo-67</code>. No obstante, <code>lib/firebase_options.dart</code> esta vacio, aunque <code>main.dart</code> inicializa Firebase sin pasar opciones. La configuracion multiplataforma generada no esta disponible en Dart.</p>
+<p>No se observan lecturas o escrituras de Firestore, listeners en tiempo real, registro, login, recuperacion de contrasena, cierre de sesion mediante <code>FirebaseAuth</code> ni reglas de seguridad documentadas. La integracion backend esta en estado de preparacion, no de uso funcional.</p>
+<h2>6. Estado actual por capacidad</h2>
+<ul>
+<li><strong>Interfaz visual:</strong> prototipo navegable implementado.</li>
+<li><strong>Navegacion:</strong> login -&gt; home, detalle, creacion y perfil implementados localmente.</li>
+<li><strong>Listado de actividades:</strong> solo datos semilla en memoria.</li>
+<li><strong>Alta de actividad:</strong> funcional durante la sesion, sin validacion robusta.</li>
+<li><strong>Detalle:</strong> lectura visual implementada.</li>
+<li><strong>Unirse:</strong> simulado con mensaje, sin persistencia.</li>
+<li><strong>Autenticacion:</strong> pantalla simulada; no funcional.</li>
+<li><strong>Perfil:</strong> maqueta con valores hardcodeados.</li>
+<li><strong>Persistencia:</strong> no implementada.</li>
+<li><strong>Firebase:</strong> dependencias y parte de configuracion presentes; codigo de opciones Dart y uso de servicios pendientes.</li>
+<li><strong>Calidad automatizada:</strong> sin pruebas detectadas; no verificada por CLI en este entorno.</li>
+<li><strong>Documentacion:</strong> README aun es la plantilla inicial de Flutter.</li>
+</ul>
+<p>La clasificacion global es <strong>MVP de interfaz / prototipo tecnico temprano</strong>. La app demuestra la idea y los flujos visuales principales, pero aun no constituye un producto multiusuario.</p>
+<h2>7. Riesgos y deuda tecnica prioritaria</h2>
+<p>1. <strong>La inicializacion de Firebase puede fallar fuera de un entorno configurado</strong>, porque <code>firebase_options.dart</code> esta vacio y <code>initializeApp()</code> se llama sin opciones explicitas.</p>
+<p>2. <strong>El login no protege ninguna ruta.</strong> Cualquier texto, incluso vacio, da acceso a Home.</p>
+<p>3. <strong>Los datos se pierden al reiniciar.</strong> Esto afecta actividades, participaciones y cualquier futura cuenta si se construye sobre el estado actual.</p>
+<p>4. <strong>La entrada de usuario no esta validada.</strong> Hay riesgo de actividades incompletas, contadores invalidos y estados imposibles.</p>
+<p>5. <strong>No hay identificadores ni esquema persistible.</strong> Integrar Firestore directamente con el modelo actual generaria documentos dificiles de actualizar y relacionar.</p>
+<p>6. <strong>No hay pruebas automatizadas.</strong> Los flujos clave pueden romperse sin deteccion temprana.</p>
+<p>7. <strong>Los controladores no se liberan.</strong> Las pantallas de login y creacion deberian disponerlos en <code>dispose</code>.</p>
+<p>8. <strong>La configuracion contiene identificadores y claves de Firebase en archivos del proyecto.</strong> Aunque las claves de cliente no son secretos por si mismas, el acceso debe protegerse con reglas Firebase y la configuracion no debe sustituir a controles de seguridad.</p>
+<p>9. <strong>El README no describe el producto ni el arranque real.</strong> Falta documentar configuracion, plataformas soportadas y decisiones de datos.</p>
+<h2>8. Trabajo futuro recomendado</h2>
+<h3>Fase 1: hacer ejecutable y estable el MVP</h3>
+<ul>
+<li>Regenerar <code>firebase_options.dart</code> con FlutterFire CLI para las plataformas objetivo y verificar la inicializacion.</li>
+<li>Definir un entorno de ejecucion reproducible: version Flutter/Dart, comandos de instalacion, emulador/dispositivo y configuracion Firebase.</li>
+<li>Agregar <code>dispose</code> a controladores, <code>Form</code> con validadores y selectores tipados de fecha y hora.</li>
+<li>Convertir <code>Meetup</code> en un modelo persistible con <code>id</code>, <code>ownerId</code>, <code>DateTime</code>, <code>createdAt</code>, <code>fromMap</code> y <code>toMap</code>.</li>
+<li>Crear pruebas de widget para login, listado, alta, detalle y boton Unirme.</li>
+</ul>
+<h3>Fase 2: autenticacion y persistencia</h3>
+<ul>
+<li>Implementar registro, inicio de sesion, cierre de sesion y recuperacion de contrasena con Firebase Auth.</li>
+<li>Crear una capa <code>MeetupRepository</code> para Firestore, con estados de carga, error y vacio.</li>
+<li>Guardar actividades en una coleccion con propietario, capacidad, fecha, ubicacion y descripcion.</li>
+<li>Persistir participaciones de forma idempotente, impedir unirse dos veces y controlar cupos.</li>
+<li>Añadir reglas Firestore basadas en usuario autenticado, propietario y operaciones permitidas.</li>
+</ul>
+<h3>Fase 3: producto utilizable</h3>
+<ul>
+<li>Sustituir el perfil fijo por datos reales y permitir editar nombre, descripcion y deportes.</li>
+<li>Añadir busqueda, filtros por deporte/fecha/lugar, ordenamiento y refresco.</li>
+<li>Permitir editar y eliminar actividades propias.</li>
+<li>Añadir estados de actividad, cancelacion, notificaciones y manejo de conflictos de cupo.</li>
+<li>Mejorar accesibilidad, internacionalizacion, mensajes de error y estados offline.</li>
+</ul>
+<h3>Fase 4: calidad y lanzamiento</h3>
+<ul>
+<li>Incorporar pruebas unitarias, de widget e integracion para Auth, Firestore y reglas de seguridad.</li>
+<li>Configurar CI para <code>flutter analyze</code>, <code>flutter test</code> y builds por plataforma.</li>
+<li>Separar configuraciones de desarrollo, staging y produccion.</li>
+<li>Revisar privacidad, consentimiento, moderacion de contenido y proteccion de datos personales.</li>
+<li>Generar builds firmadas y completar la documentacion de despliegue en tiendas.</li>
+</ul>
+<h2>9. Criterio de listo para una beta</h2>
+<p>Planazo deberia considerarse beta cuando un usuario pueda crear una cuenta, iniciar y cerrar sesion, crear una actividad valida, verla despues de reiniciar la app, unirse una sola vez si hay cupo, cancelar su participacion, consultar un perfil real y recibir errores claros. Ese flujo debe estar cubierto por pruebas automaticas y protegido por reglas de Firestore verificadas en un proyecto de staging.</p>
+<h2>10. Conclusion</h2>
+<p>El proyecto tiene una base visual clara y suficiente para validar la idea de una red de encuentros deportivos. La siguiente inversion no deberia centrarse en mas pantallas decorativas, sino en convertir los flujos simulados en contratos reales: identidad, modelo de datos, persistencia, validacion y pruebas. Una vez resueltos esos fundamentos, las funciones sociales y de descubrimiento podran crecer sin rehacer la estructura principal.</p>
+<div class="page-number">Planazo | Informe tecnico</div></body></html>
