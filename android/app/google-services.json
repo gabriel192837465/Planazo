@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "11778454053",
+    "project_id": "planazo-67",
+    "storage_bucket": "planazo-67.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:11778454053:android:47880ee7dc1d33724305cc",
+        "android_client_info": {
+          "package_name": "com.company.planazo3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5Bwpqrrg7Cn1Rhbus2YTzzVIuLkVtzrA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:11778454053:android:d0f5dac14c14825c4305cc",
+        "android_client_info": {
+          "package_name": "com.example.planazo3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5Bwpqrrg7Cn1Rhbus2YTzzVIuLkVtzrA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
